@@ -1,0 +1,30 @@
+// =============================================================
+// OpenCRM — Prisma Schema (Phase 1 placeholder)
+//
+// This is a minimal stub to establish the Prisma project setup.
+// Real domain models (users, organizations, conversations, etc.)
+// will be added in Phase 2 when database setup begins.
+// =============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../src/generated/client"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// Placeholder model — replaced in Phase 2.
+// Prisma requires at least one model to generate a valid client.
+// ------------------------------------------------------------
+model _SchemaVersion {
+  id        String   @id @default(cuid())
+  version   String
+  appliedAt DateTime @default(now())
+
+  @@map("_schema_versions")
+}
