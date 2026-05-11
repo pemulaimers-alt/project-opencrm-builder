@@ -21,8 +21,7 @@ const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
   throw new Error(
-    "[prisma] DATABASE_URL is not set.\n" +
-      "Copy apps/backend/.env.example → apps/backend/.env and set DATABASE_URL."
+    "[prisma] DATABASE_URL is not set. Copy apps/backend/.env.example to apps/backend/.env and set DATABASE_URL."
   );
 }
 
