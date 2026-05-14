@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+.output/
+.tanstack/
+build/
+
+# Prisma generated client
+apps/backend/src/generated/
+
+# Auto-generated route tree
+apps/frontend/src/routeTree.gen.ts
+
+# Environment files
+.env
+.env.local
+.env.*.local
+# Keep examples
+!.env.example
+!apps/**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+bun-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Bun
+bun.lockb
