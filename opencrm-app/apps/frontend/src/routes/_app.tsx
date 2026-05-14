@@ -1,146 +1,397 @@
 // =============================================================
-// Authenticated App Layout (Phase 1 — shell placeholder)
+// Authenticated App Layout (Phase 4)
 //
-// This is the parent layout for all protected routes.
-// Every route under _app/ inherits this layout.
+// Per builder contract (frontend/blueprint.md _app.tsx,
+// UI-REFERENCE.md §4 App Layout + §5 Sidebar):
 //
-// Phase 1: renders a minimal but realistic shell structure —
-//   sidebar placeholder, top bar placeholder, and <Outlet />.
-//   Auth guard is wired with a TODO stub.
+// Auth guard flow:
+//   1. Check scalechat_token in localStorage
+//   2. syncOrganizationContextFromSession() → GET /api/auth/context
+//   3. If not authenticated → redirect /login
+//   4. If no org → redirect /onboarding
+//   5. isPathAllowedForRole(pathname, role) → redirect /dashboard if blocked
 //
-// Phase 3: replace the auth stub with a real session check,
-//   add organization context, role-based access control,
-//   and fully implement Sidebar + TopBar components.
+// Layout: Sidebar (desktop) + TopBar + <Outlet /> + BottomNav (mobile)
+//
+// Sidebar nav groups per UI-REFERENCE.md §5:
+//   Operasional: Dashboard, Inbox, Handover, Orders
+//   Data: Pelanggan (Customers), Products
+//   Outreach: Broadcast
+//   Otomasi: Workflow, AI Playground, Knowledge Base, Settings
 // =============================================================
 
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  Link,
+  useLocation,
+} from "@tanstack/react-router";
+import { createContext, useContext, useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Users,
+  GitPullRequest,
+  ShoppingBag,
+  Package,
+  Radio,
+  Workflow,
+  Bot,
+  BookOpen,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Bell,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getToken, logout as apiLogout } from "@/lib/api";
+import {
+  syncOrganizationContextFromSession,
+  getStoredOrgName,
+} from "@/lib/organization";
+import { isPathAllowedForRole } from "@/lib/role-access";
+
+// ── Route definition ──────────────────────────────────────────
 
 export const Route = createFileRoute("/_app")({
-  // Auth guard — Phase 3 will replace this with real session validation
-  beforeLoad: () => {
-    const token =
-      typeof localStorage !== "undefined"
-        ? localStorage.getItem("scalechat_token")
-        : null;
-
+  beforeLoad: async ({ location }) => {
+    const token = getToken();
     if (!token) {
-      throw redirect({ to: "/login" });
+      throw redirect({ to: "/login", search: { redirect: location.href } });
     }
+    // Full context sync happens in the component via useEffect;
+    // beforeLoad only handles the cheap token-missing fast-path.
   },
   component: AppLayout,
 });
 
+// ── App context ───────────────────────────────────────────────
+
+interface AppContextValue {
+  userId: string | null;
+  userName: string | null;
+  userRole: string | null;
+  orgName: string | null;
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+  closeSidebar: () => void;
+}
+
+const AppCtx = createContext<AppContextValue>({
+  userId: null,
+  userName: null,
+  userRole: null,
+  orgName: null,
+  sidebarOpen: false,
+  toggleSidebar: () => {},
+  closeSidebar: () => {},
+});
+
+export function useAppContext() {
+  return useContext(AppCtx);
+}
+
+// ── Layout ────────────────────────────────────────────────────
+
 function AppLayout() {
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState<string | null>(getStoredOrgName());
+
+  // On mount: sync session and enforce role-based access
+  useEffect(() => {
+    (async () => {
+      const sync = await syncOrganizationContextFromSession();
+      if (!sync.authenticated) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!sync.hasOrg) {
+        window.location.href = "/onboarding";
+        return;
+      }
+      if (sync.context?.user) {
+        setUserId(sync.context.user.id);
+        setUserName(sync.context.user.name);
+        setUserRole(sync.context.user.role ?? "agent");
+        if (sync.context.organization?.name) {
+          setOrgName(sync.context.organization.name);
+        }
+        // Role gate
+        const role = sync.context.user.role ?? "agent";
+        if (!isPathAllowedForRole(location.pathname, role)) {
+          window.location.href = "/dashboard";
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const ctx: AppContextValue = {
+    userId,
+    userName,
+    userRole,
+    orgName,
+    sidebarOpen,
+    toggleSidebar: () => setSidebarOpen((v) => !v),
+    closeSidebar: () => setSidebarOpen(false),
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Sidebar — Phase 3: replace with full <Sidebar /> component */}
-      <AppSidebar />
+    <AppCtx.Provider value={ctx}>
+      {/* ocm-shell matches UI-REFERENCE.md .ocm-shell class */}
+      <div className="ocm-shell flex h-screen overflow-hidden bg-background text-foreground">
 
-      {/* Main content area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar — Phase 3: replace with full <TopBar /> component */}
-        <AppTopBar />
+        {/* Desktop sidebar */}
+        <div className="hidden lg:flex">
+          <AppSidebar />
+        </div>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
-        </main>
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-[120] lg:hidden">
+            <button
+              className="absolute inset-0 bg-black/60"
+              onClick={ctx.closeSidebar}
+              aria-label="Close menu"
+            />
+            <div className="relative h-full w-72">
+              <AppSidebar />
+            </div>
+          </div>
+        )}
+
+        {/* Main area */}
+        <div className="flex min-w-0 flex-1 flex-col bg-background">
+          <AppTopBar />
+          <div className="relative flex min-h-0 flex-1 overflow-auto pb-16 lg:pb-0">
+            <Outlet />
+          </div>
+          {/* Mobile bottom nav — Phase 5 (realtime-heavy pages need it) */}
+        </div>
       </div>
-    </div>
+    </AppCtx.Provider>
   );
 }
 
-// ------------------------------------------------------------------
-// Sidebar placeholder
-// ------------------------------------------------------------------
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: "▤" },
-  { label: "Inbox", href: "/chat", icon: "✉" },
-  { label: "Customers", href: "/customers", icon: "👥" },
-  { label: "Pipeline", href: "/pipeline", icon: "⬡" },
-  { label: "Settings", href: "/settings", icon: "⚙" },
+// ── Sidebar ───────────────────────────────────────────────────
+
+const NAV_GROUPS = [
+  {
+    label: "Operasional",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Inbox", href: "/chat", icon: MessageSquare },
+      { label: "Handover", href: "/handover", icon: GitPullRequest },
+      { label: "Orders", href: "/orders", icon: ShoppingBag },
+    ],
+  },
+  {
+    label: "Data",
+    items: [
+      { label: "Pelanggan", href: "/customers", icon: Users },
+      { label: "Products", href: "/products", icon: Package },
+    ],
+  },
+  {
+    label: "Outreach",
+    items: [
+      { label: "Broadcast", href: "/broadcast", icon: Radio },
+    ],
+  },
+  {
+    label: "Otomasi",
+    items: [
+      { label: "Workflow", href: "/flows", icon: Workflow },
+      { label: "AI Playground", href: "/ai", icon: Bot },
+      { label: "Knowledge Base", href: "/knowledge", icon: BookOpen },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
 ];
 
 function AppSidebar() {
-  const currentPath =
-    typeof window !== "undefined" ? window.location.pathname : "";
+  const { orgName, userName, userRole, closeSidebar } = useAppContext();
+  const location = useLocation();
+
+  async function handleLogout() {
+    await apiLogout();
+    window.location.href = "/login";
+  }
 
   return (
-    <aside className="flex h-full w-56 flex-shrink-0 flex-col border-r border-gray-200 bg-white">
-      {/* Brand */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-gray-200 px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
-          <span className="text-xs font-bold text-white">O</span>
+    <aside className="flex h-full w-72 flex-col border-r border-border bg-card text-card-foreground">
+
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg bg-primary font-bold text-primary-foreground">
+            O
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">OpenCRM</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {orgName ?? "WhatsApp Workspace"}
+            </p>
+          </div>
         </div>
-        <span className="text-sm font-semibold text-gray-900">OpenCRM</span>
+        {/* Mobile close */}
+        <button
+          onClick={closeSidebar}
+          className="rounded-md p-2 text-muted-foreground hover:bg-muted lg:hidden"
+          aria-label="Close sidebar"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
-        <ul className="space-y-0.5">
-          {NAV_ITEMS.map((item) => {
-            const isActive = currentPath.startsWith(item.href);
-            return (
-              <li key={item.href}>
-                <a
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "bg-blue-50 font-medium text-blue-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  )}
-                >
-                  <span className="text-base leading-none">{item.icon}</span>
-                  {item.label}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active =
+                  location.pathname === item.href ||
+                  (item.href !== "/dashboard" &&
+                    location.pathname.startsWith(item.href + "/"));
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    onClick={closeSidebar}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <item.icon size={16} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* User footer — Phase 3: show real user name/avatar */}
-      <div className="border-t border-gray-200 p-3">
-        <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-600">
-            U
-          </div>
+      {/* User footer */}
+      <div className="border-t border-border p-3">
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2">
+          <UserAvatar name={userName ?? "U"} size={30} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-gray-700">Agent</p>
-            <p className="truncate text-xs text-gray-400">agent@company.com</p>
+            <p className="truncate text-sm font-semibold">
+              {userName ?? "Agent"}
+            </p>
+            <p className="truncate text-xs capitalize text-muted-foreground">
+              {userRole ?? "agent"}
+            </p>
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-500 hover:bg-red-500/15 transition-colors"
+        >
+          <LogOut size={15} />
+          Logout
+        </button>
       </div>
     </aside>
   );
 }
 
-// ------------------------------------------------------------------
-// Top bar placeholder
-// ------------------------------------------------------------------
-function AppTopBar() {
-  return (
-    <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6">
-      {/* Page title — Phase 3: derive from route meta */}
-      <h2 className="text-sm font-semibold text-gray-700">
-        {typeof window !== "undefined"
-          ? formatPageTitle(window.location.pathname)
-          : ""}
-      </h2>
+// ── Top bar ───────────────────────────────────────────────────
 
-      {/* Right actions — Phase 3: notifications, user menu */}
+function AppTopBar() {
+  const { toggleSidebar } = useAppContext();
+  const location = useLocation();
+
+  const pageTitle = (() => {
+    const seg = location.pathname.split("/").filter(Boolean)[0] ?? "";
+    if (!seg) return "Dashboard";
+    return seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
+  })();
+
+  return (
+    <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
+      <div className="flex items-center gap-3">
+        {/* Mobile menu button */}
+        <button
+          onClick={toggleSidebar}
+          className="rounded-md p-2 text-muted-foreground hover:bg-muted lg:hidden"
+          aria-label="Open menu"
+        >
+          <Menu size={18} />
+        </button>
+        <h2 className="text-sm font-semibold text-foreground">{pageTitle}</h2>
+      </div>
+
+      {/* Right actions */}
       <div className="flex items-center gap-2">
-        <div className="h-2 w-2 rounded-full bg-green-400" title="Online" />
-        <span className="text-xs text-gray-400">Online</span>
+        <button
+          className="relative rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          aria-label="Notifications"
+        >
+          <Bell size={18} />
+        </button>
       </div>
     </header>
   );
 }
 
-function formatPageTitle(pathname: string): string {
-  const segment = pathname.split("/").filter(Boolean)[0] ?? "";
-  if (!segment) return "Dashboard";
-  return segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+// ── Avatar helper ─────────────────────────────────────────────
+
+// Gradient palette per UI-REFERENCE.md §5 Avatar Component
+const AVATAR_PALETTE: [string, string][] = [
+  ["#d97706", "#7c2d12"],
+  ["#0f766e", "#164e63"],
+  ["#9333ea", "#4c1d95"],
+  ["#dc2626", "#7f1d1d"],
+  ["#0369a1", "#1e3a8a"],
+  ["#65a30d", "#3f6212"],
+  ["#c026d3", "#701a75"],
+];
+
+function UserAvatar({ name, size = 30 }: { name: string; size?: number }) {
+  const hash = name
+    .split("")
+    .reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const [from, to] = AVATAR_PALETTE[hash % AVATAR_PALETTE.length]!;
+  const initials = name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        background: `linear-gradient(135deg, ${from}, ${to})`,
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.38,
+        fontWeight: 700,
+        color: "#fff",
+        flexShrink: 0,
+      }}
+      aria-label={name}
+    >
+      {initials}
+    </div>
+  );
 }

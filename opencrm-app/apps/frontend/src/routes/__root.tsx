@@ -1,18 +1,14 @@
 // =============================================================
-// Root Layout — wraps every page
+// Root Layout (Phase 4)
 //
-// Responsibilities (Phase 1):
-//   - Import global styles
-//   - Render <Outlet /> for child routes
-//
-// Deferred to later phases:
-//   - ThemeProvider (dark/light mode)    Phase 3
-//   - Toast notifications (Sonner)       Phase 3
-//   - Auth session hydration             Phase 3
-//   - Organization context provider      Phase 3
+// Per builder contract (frontend/blueprint.md __root.tsx):
+//   - ThemeProvider (next-themes) — deferred: added in Phase 5
+//   - Sonner <Toaster /> for toast notifications
+//   - Global styles
 // =============================================================
 
 import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { Toaster } from "sonner";
 import "../styles.css";
 
 export const Route = createRootRoute({
@@ -23,6 +19,7 @@ function RootLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
       <Outlet />
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 }
