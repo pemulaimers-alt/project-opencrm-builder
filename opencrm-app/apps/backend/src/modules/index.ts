@@ -1,5 +1,5 @@
 // =============================================================
-// Module registration barrel (Phase 3 — Step 2)
+// Module registration barrel (Phase 6A)
 // =============================================================
 
 export { authModule } from "./auth";
@@ -9,3 +9,5 @@ export { customerModule } from "./customer";
 export { contactModule } from "./contact";
 export { dealModule } from "./deal";
 export { activityModule } from "./activity";
+export { conversationModule } from "./conversation";
+export { messageModule } from "./message";

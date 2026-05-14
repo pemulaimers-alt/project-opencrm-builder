@@ -39,13 +39,15 @@ model App {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  organization Organization?
-  users        User[]
-  teams        Team[]
-  customers    Customer[]
-  contacts     Contact[]
-  deals        Deal[]
-  activities   Activity[]
+  organization  Organization?
+  users         User[]
+  teams         Team[]
+  customers     Customer[]
+  contacts      Contact[]
+  deals         Deal[]
+  activities    Activity[]
+  conversations Conversation[]
+  messages      Message[]
 
   @@map("apps")
 }
@@ -88,8 +90,10 @@ model User {
   invitations Invitation[] @relation("InviterUser")
 
   // CRM relations
-  assignedDeals Deal[]     @relation("DealAssignee")
-  activities    Activity[] @relation("ActivityPerformer")
+  assignedDeals         Deal[]         @relation("DealAssignee")
+  activities            Activity[]     @relation("ActivityPerformer")
+  assignedConversations Conversation[] @relation("ConversationAssignee")
+  sentMessages          Message[]      @relation("MessageSender")
 
   @@index([appId])
   @@index([teamId])
@@ -260,9 +264,10 @@ model Customer {
   appId String? @map("app_id")
   app   App?    @relation(fields: [appId], references: [id], onDelete: SetNull)
 
-  contacts   Contact[]
-  deals      Deal[]
-  activities Activity[] @relation("ActivityCustomer")
+  contacts      Contact[]
+  deals         Deal[]
+  activities    Activity[]     @relation("ActivityCustomer")
+  conversations Conversation[]
 
   @@index([appId])
   @@map("customers")
@@ -327,6 +332,65 @@ model Deal {
   @@index([appId])
   @@index([stage])
   @@map("deals")
+}
+
+// =============================================================
+// CONVERSATIONS — Phase 6A: internal CRM conversation threads
+// Linked to a customer; each conversation is a thread of messages.
+// Full omnichannel fields (inbox_id, channel_type, external_id)
+// are deferred to the WhatsApp/omnichannel phase.
+// =============================================================
+model Conversation {
+  id         String   @id @default(cuid())
+  // "open" | "pending" | "resolved"
+  status     String   @default("open")
+  subject    String?
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  assigneeId String? @map("assignee_id")
+  assignee   User?   @relation("ConversationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  appId String? @map("app_id")
+  app   App?    @relation(fields: [appId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  @@index([customerId])
+  @@index([assigneeId])
+  @@index([appId])
+  @@index([status])
+  @@map("conversations")
+}
+
+// =============================================================
+// MESSAGES — Phase 6A: messages within a conversation
+// =============================================================
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  // "agent" | "system"
+  senderType  String   @default("agent") @map("sender_type")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String? @map("sender_id")
+  sender   User?   @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  appId String? @map("app_id")
+  app   App?    @relation(fields: [appId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([appId])
+  @@map("messages")
 }
 
 // =============================================================

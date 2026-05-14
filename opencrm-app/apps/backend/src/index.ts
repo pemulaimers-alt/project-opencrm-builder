@@ -29,6 +29,8 @@ import {
   contactModule,
   dealModule,
   activityModule,
+  conversationModule,
+  messageModule,
 } from "./modules";
 
 const PORT = Number(process.env.PORT ?? 3010);
@@ -93,28 +95,32 @@ const app = new Elysia({ name: "opencrm" })
     return auth.handler(request);
   })
 
-  // 6. API group — all Phase 3 modules under /api
+  // 6. API group — all modules under /api
   .group("/api", (api) =>
     api
-      .use(authModule)       // /api/auth/*
-      .use(userModule)       // /api/user/*
-      .use(teamModule)       // /api/teams/*
-      .use(customerModule)   // /api/customers/*
-      .use(contactModule)    // /api/contacts/*
-      .use(dealModule)       // /api/crm/*
-      .use(activityModule)   // /api/activities/*
+      .use(authModule)         // /api/auth/*
+      .use(userModule)         // /api/user/*
+      .use(teamModule)         // /api/teams/*
+      .use(customerModule)     // /api/customers/*
+      .use(contactModule)      // /api/contacts/*
+      .use(dealModule)         // /api/crm/*
+      .use(activityModule)     // /api/activities/*
+      .use(conversationModule) // /api/conversations/*
+      .use(messageModule)      // /api/messages/*
   )
 
-  // 7. API v1 mirror — per builder contract, most modules are mirrored
+  // 7. API v1 mirror — per builder contract
   .group("/api/v1", (api) =>
     api
-      .use(authModule)       // /api/v1/auth/*
-      .use(userModule)       // /api/v1/user/*
-      .use(teamModule)       // /api/v1/teams/*
-      .use(customerModule)   // /api/v1/customers/*
-      .use(contactModule)    // /api/v1/contacts/*
-      .use(dealModule)       // /api/v1/crm/*
-      .use(activityModule)   // /api/v1/activities/*
+      .use(authModule)
+      .use(userModule)
+      .use(teamModule)
+      .use(customerModule)
+      .use(contactModule)
+      .use(dealModule)
+      .use(activityModule)
+      .use(conversationModule)
+      .use(messageModule)
   )
 
   .listen(PORT);

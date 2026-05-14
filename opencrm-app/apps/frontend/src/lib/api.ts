@@ -359,3 +359,124 @@ export async function updateUserProfile(id: string, body: {
 }): Promise<{ data: UserProfile }> {
   return apiRequest<{ data: UserProfile }>(`/api/user/${id}`, { method: "PATCH", json: body });
 }
+
+
+// ── Conversation endpoints (/api/conversations/*) ─────────────
+
+export interface ConversationCustomer {
+  id: string;
+  name: string;
+  company?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface ConversationAssignee {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+  role?: string | null;
+}
+
+export interface ConversationLastMessage {
+  id: string;
+  content: string;
+  createdAt: string;
+  senderType: string;
+}
+
+export interface Conversation {
+  id: string;
+  status: string;
+  subject?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  customer?: ConversationCustomer | null;
+  assignee?: ConversationAssignee | null;
+  messages?: ConversationLastMessage[];
+  _count?: { messages: number };
+}
+
+export interface ConversationMessage {
+  id: string;
+  content: string;
+  senderType: string;
+  senderId?: string | null;
+  createdAt: string;
+  sender?: {
+    id: string;
+    name: string;
+    avatarUrl?: string | null;
+    role?: string | null;
+  } | null;
+}
+
+export interface ConversationListResponse {
+  data: Conversation[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/** GET /api/conversations/ — list with optional filters */
+export async function listConversations(params?: {
+  status?: string;
+  customerId?: string;
+  page?: number;
+  limit?: number;
+}): Promise<ConversationListResponse> {
+  const q = new URLSearchParams();
+  if (params?.status)     q.set("status", params.status);
+  if (params?.customerId) q.set("customerId", params.customerId);
+  if (params?.page)       q.set("page", String(params.page));
+  if (params?.limit)      q.set("limit", String(params.limit));
+  const qs = q.toString() ? `?${q}` : "";
+  return apiRequest<ConversationListResponse>(`/api/conversations/${qs}`);
+}
+
+/** GET /api/conversations/:id */
+export async function getConversation(id: string): Promise<{ data: Conversation }> {
+  return apiRequest<{ data: Conversation }>(`/api/conversations/${id}`);
+}
+
+/** POST /api/conversations/ — create */
+export async function createConversation(body: {
+  subject?: string;
+  notes?: string;
+  customerId?: string;
+  assigneeId?: string;
+}): Promise<{ data: Conversation }> {
+  return apiRequest<{ data: Conversation }>("/api/conversations/", { method: "POST", json: body });
+}
+
+/** PATCH /api/conversations/:id/status */
+export async function updateConversationStatus(id: string, status: string): Promise<{ data: Conversation }> {
+  return apiRequest<{ data: Conversation }>(`/api/conversations/${id}/status`, {
+    method: "PATCH",
+    json: { status },
+  });
+}
+
+/** GET /api/conversations/:id/messages */
+export async function getConversationMessages(
+  conversationId: string,
+  params?: { limit?: number; before?: string }
+): Promise<{ data: ConversationMessage[] }> {
+  const q = new URLSearchParams();
+  if (params?.limit)  q.set("limit", String(params.limit));
+  if (params?.before) q.set("before", params.before);
+  const qs = q.toString() ? `?${q}` : "";
+  return apiRequest<{ data: ConversationMessage[] }>(`/api/conversations/${conversationId}/messages${qs}`);
+}
+
+/** POST /api/conversations/:id/messages — send */
+export async function sendConversationMessage(
+  conversationId: string,
+  content: string
+): Promise<{ data: ConversationMessage }> {
+  return apiRequest<{ data: ConversationMessage }>(
+    `/api/conversations/${conversationId}/messages`,
+    { method: "POST", json: { content } }
+  );
+}
