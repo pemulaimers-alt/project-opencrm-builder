@@ -10,17 +10,18 @@
 // =============================================================
 
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   MessageSquare,
   Bot,
   Clock,
-  TrendingUp,
   Users,
   AlertCircle,
   CheckCircle2,
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { listCustomers } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
@@ -42,52 +43,43 @@ interface Alert {
   description: string;
 }
 
-// ── Placeholder data ──────────────────────────────────────────
-
-const STAT_CARDS: StatCard[] = [
-  {
-    label: "Chat masuk",
-    value: "—",
-    delta: "—",
-    positive: true,
-    icon: MessageSquare,
-  },
-  {
-    label: "AI resolved",
-    value: "—",
-    delta: "—",
-    positive: true,
-    icon: Bot,
-  },
-  {
-    label: "Avg response",
-    value: "—",
-    delta: "—",
-    positive: true,
-    icon: Clock,
-  },
-  {
-    label: "Revenue 7D",
-    value: "—",
-    delta: "—",
-    positive: true,
-    icon: TrendingUp,
-  },
-];
+// ── Static placeholder data ───────────────────────────────────
 
 const DAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
-
-const ALERTS: Alert[] = [
-  {
-    tone: "info",
-    title: "Dashboard connected",
-    description: "Metrics data will appear here once the analytics module is active.",
-  },
-];
 
 // ── Component ─────────────────────────────────────────────────
 
 function DashboardPage() {
+  // Live: customer total from /api/customers/
+  const [customerTotal, setCustomerTotal] = useState<number | null>(null);
+
+  useEffect(() => {
+    listCustomers({ per_page: 1 })
+      .then((res) => setCustomerTotal(res.total))
+      .catch(() => {});
+  }, []);
+
+  const STAT_CARDS: StatCard[] = [
+    { label: "Chat masuk",  value: "—",      delta: "—", positive: true, icon: MessageSquare },
+    { label: "AI resolved", value: "—",      delta: "—", positive: true, icon: Bot },
+    { label: "Avg response",value: "—",      delta: "—", positive: true, icon: Clock },
+    {
+      label: "Pelanggan",
+      value: customerTotal !== null ? customerTotal.toLocaleString() : "—",
+      delta: "—",
+      positive: true,
+      icon: Users,
+    },
+  ];
+
+  const ALERTS: Alert[] = [
+    {
+      tone: customerTotal !== null ? "success" : "info",
+      title: customerTotal !== null ? `${customerTotal.toLocaleString()} customers in workspace` : "Dashboard connected",
+      description: "Chat volume, AI resolution, and response time metrics will appear here once the analytics module is active.",
+    },
+  ];
+
   return (
     <main className="ocm-page">
 

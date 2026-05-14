@@ -186,3 +186,176 @@ export async function logout(): Promise<void> {
   await apiRequest("/api/auth/logout", { method: "POST" }).catch(() => {});
   clearToken();
 }
+
+// ── Customer endpoints (/api/customers/*) ─────────────────────
+
+export interface Customer {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  industry?: string | null;
+  website?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { contacts: number; deals: number };
+}
+
+export interface ContactSummary {
+  id: string;
+  firstName: string;
+  lastName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  jobTitle?: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+}
+
+export interface DealSummary {
+  id: string;
+  title: string;
+  value?: string | null;
+  currency: string;
+  stage: string;
+  priority: string;
+  closedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerDetail extends Customer {
+  contacts: ContactSummary[];
+  deals: DealSummary[];
+}
+
+export interface CustomerListResponse {
+  data: Customer[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/** GET /api/customers/ — paginated customer list */
+export async function listCustomers(params?: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+}): Promise<CustomerListResponse> {
+  const q = new URLSearchParams();
+  if (params?.page)     q.set("page", String(params.page));
+  if (params?.per_page) q.set("per_page", String(params.per_page));
+  if (params?.search)   q.set("q", params.search);
+  const qs = q.toString() ? `?${q}` : "";
+  return apiRequest<CustomerListResponse>(`/api/customers/${qs}`);
+}
+
+/** GET /api/customers/:id — customer detail with contacts + deals */
+export async function getCustomer(id: string): Promise<{ data: CustomerDetail }> {
+  return apiRequest<{ data: CustomerDetail }>(`/api/customers/${id}`);
+}
+
+/** POST /api/customers/ — create customer */
+export async function createCustomer(body: {
+  name: string; email?: string; phone?: string; company?: string;
+  industry?: string; website?: string; address?: string; notes?: string;
+}): Promise<{ data: Customer }> {
+  return apiRequest<{ data: Customer }>("/api/customers/", { method: "POST", json: body });
+}
+
+/** PUT /api/customers/:id — update customer */
+export async function updateCustomer(id: string, body: Partial<{
+  name: string; email: string; phone: string; company: string;
+  industry: string; website: string; address: string; notes: string;
+}>): Promise<{ data: Customer }> {
+  return apiRequest<{ data: Customer }>(`/api/customers/${id}`, { method: "PUT", json: body });
+}
+
+/** DELETE /api/customers/:id */
+export async function deleteCustomer(id: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/api/customers/${id}`, { method: "DELETE" });
+}
+
+// ── Team endpoints (/api/teams/*) ─────────────────────────────
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role?: string | null;
+  active?: boolean | null;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  users?: TeamMember[];
+}
+
+/** GET /api/teams/ — list teams with members */
+export async function listTeams(): Promise<Team[]> {
+  const data = await apiRequest<{ success: boolean; payload: Team[] }>("/api/teams/");
+  return data.payload ?? [];
+}
+
+/** POST /api/teams/ — create team */
+export async function createTeam(body: { name: string; description?: string }): Promise<{ success: boolean; payload: Team }> {
+  return apiRequest<{ success: boolean; payload: Team }>("/api/teams/", { method: "POST", json: body });
+}
+
+/** PATCH /api/teams/:id — update team */
+export async function updateTeam(id: string, body: { name?: string; description?: string }): Promise<{ success: boolean; payload: Team }> {
+  return apiRequest<{ success: boolean; payload: Team }>(`/api/teams/${id}`, { method: "PATCH", json: body });
+}
+
+/** DELETE /api/teams/:id */
+export async function deleteTeam(id: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/api/teams/${id}`, { method: "DELETE" });
+}
+
+/** POST /api/teams/:id/members */
+export async function addTeamMember(teamId: string, userId: string): Promise<{ success: boolean; payload: TeamMember }> {
+  return apiRequest<{ success: boolean; payload: TeamMember }>(
+    `/api/teams/${teamId}/members`, { method: "POST", json: { userId } }
+  );
+}
+
+/** DELETE /api/teams/:id/members/:userId */
+export async function removeTeamMember(teamId: string, userId: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/api/teams/${teamId}/members/${userId}`, { method: "DELETE" });
+}
+
+// ── User endpoints (/api/user/*) ──────────────────────────────
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  role?: string | null;
+  avatarUrl?: string | null;
+  phoneNumber?: string | null;
+  timezone?: string | null;
+  active?: boolean | null;
+  teamId?: string | null;
+  appId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/user/:id — get user profile */
+export async function getUserProfile(id: string): Promise<{ data: UserProfile }> {
+  return apiRequest<{ data: UserProfile }>(`/api/user/${id}`);
+}
+
+/** PATCH /api/user/:id — update user profile */
+export async function updateUserProfile(id: string, body: {
+  name?: string; avatar_url?: string; phone?: string;
+}): Promise<{ data: UserProfile }> {
+  return apiRequest<{ data: UserProfile }>(`/api/user/${id}`, { method: "PATCH", json: body });
+}
