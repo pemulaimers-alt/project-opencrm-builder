@@ -1,34 +1,30 @@
 // =============================================================
-// OpenCRM Backend — Entrypoint (Phase 3)
+// OpenCRM Backend — Entrypoint (Phase 3 — Step 1)
 //
 // Per builder contract (backend/blueprint.md) plugin order:
 //   1. new Elysia({ name: 'opencrm' })
 //   2. .use(cors({ ... }))
 //   3. .use(appContext)         → global derive: userId, appUuid, orgSlug
 //   4. .use(openApiPlugin)     → Swagger/OpenAPI at /docs
-//   5. .group('/auth', ...)    → Better Auth routes (sign-in, sign-up)
-//   6. .group('/api', ...)     → All domain module routes
+//   5. .all('/auth/*', ...)    → Better Auth routes (sign-in, sign-up)
+//   6. .group('/api', ...)     → authModule only (Step 1)
 //   7. .listen(PORT)
 //
-// Deferred to later phases:
-//   - Socket.IO realtime server (Phase 6)
-//   - BullMQ workers            (Phase 6)
-//   - Redis connection          (Phase 6)
+// Deferred to Step 2:
+//   - CRM modules (user, team, customer, contact, deal, activity)
+//   - /api/v1 mirror group (added once CRM modules are present)
+//
+// Deferred to Phase 6:
+//   - Socket.IO realtime server
+//   - BullMQ workers
+//   - Redis connection
 // =============================================================
 
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { appContext, openApiPlugin } from "./plugins";
 import { auth } from "./auth";
-import {
-  authModule,
-  userModule,
-  teamModule,
-  customerModule,
-  contactModule,
-  dealModule,
-  activityModule,
-} from "./modules";
+import { authModule } from "./modules";
 
 const PORT = Number(process.env.PORT ?? 3010);
 const NODE_ENV = process.env.NODE_ENV ?? "development";
@@ -92,28 +88,11 @@ const app = new Elysia({ name: "opencrm" })
     return auth.handler(request);
   })
 
-  // 6. API group — all domain modules mounted under /api
+  // 6. API group — authModule only (Step 1)
+  // CRM modules added in Step 2.
   .group("/api", (api) =>
     api
-      .use(authModule)       // /api/auth/*
-      .use(userModule)       // /api/user/*
-      .use(teamModule)       // /api/teams/*
-      .use(customerModule)   // /api/customers/*
-      .use(contactModule)    // /api/contacts/*
-      .use(dealModule)       // /api/crm/*
-      .use(activityModule)   // /api/activities/*
-  )
-
-  // 7. API v1 mirror — same modules under /api/v1 for compatibility
-  .group("/api/v1", (api) =>
-    api
-      .use(authModule)
-      .use(userModule)
-      .use(teamModule)
-      .use(customerModule)
-      .use(contactModule)
-      .use(dealModule)
-      .use(activityModule)
+      .use(authModule) // /api/auth/*
   )
 
   .listen(PORT);

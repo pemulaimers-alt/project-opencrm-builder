@@ -1,57 +1,36 @@
 // =============================================================
-// Auth Service (Phase 3)
+// Auth Service (Phase 3 — Step 1)
 // =============================================================
 
+import { auth } from "../../auth";
 import { prisma } from "../../lib/prisma";
 
 export class AuthService {
   /**
-   * Legacy login — verify email/password directly via Prisma.
-   * In production this should use Better Auth's verify, but for
-   * API contract compatibility we expose a simple endpoint.
+   * Legacy login — POST /api/auth/login
+   *
+   * Proxies the request through Better Auth's signInEmail handler
+   * so session creation, password hashing, and token issuance are
+   * all owned by Better Auth. We never touch the session table directly.
+   *
+   * Returns the same { user, token } shape the frontend expects, or
+   * an error if credentials are invalid.
    */
   static async login(email: string, password: string) {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        password: true,
-        role: true,
-        avatarUrl: true,
-        appId: true,
-        active: true,
-      },
+    const response = await auth.api.signInEmail({
+      body: { email, password },
     });
 
-    if (!user || !user.active) {
+    if (!response) {
       return { success: false as const, error: "Invalid credentials" };
     }
 
-    // Password verification — in production use Better Auth's built-in hash compare.
-    // Phase 3 MVP: simple comparison for structural correctness.
-    // Better Auth handles real password hashing via /auth/sign-in/email.
-    if (!user.password) {
-      return { success: false as const, error: "Invalid credentials" };
-    }
-
-    // Create a session token
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-    await prisma.session.create({
-      data: {
-        token,
-        userId: user.id,
-        expiresAt,
-      },
-    });
-
-    const { password: _, ...userData } = user;
     return {
       success: true as const,
-      data: { user: userData, token },
+      data: {
+        user: response.user,
+        token: response.token,
+      },
     };
   }
 

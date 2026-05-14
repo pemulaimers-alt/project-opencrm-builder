@@ -19,6 +19,7 @@ import { Elysia } from "elysia";
 import { prisma } from "../lib/prisma";
 
 export const appContext = new Elysia({ name: "app-context" }).derive(
+  { as: "global" },
   async ({ headers, cookie }) => {
     let userId: string | null = null;
     let appUuid: string | null = null;
