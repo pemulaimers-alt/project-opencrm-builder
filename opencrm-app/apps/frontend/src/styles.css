@@ -1,0 +1,192 @@
+/* =============================================================
+   OpenCRM — Global Styles (Phase 4)
+
+   Tailwind CSS v4 — imported via @import, not @tailwind directives.
+   ocm-* utility classes per UI-REFERENCE.md design system §1.
+   ============================================================= */
+
+@import "tailwindcss";
+
+/* ----------------------------------------------------------
+   Design tokens — aligned to UI-REFERENCE.md §1
+   ---------------------------------------------------------- */
+@layer base {
+  :root {
+    /* Per UI-REFERENCE.md: primary = warm orange */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.646 0.222 41.116);
+    --primary-foreground: oklch(0.98 0.016 73.684);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.646 0.222 41.116);
+    --destructive: oklch(0.58 0.22 27);
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.705 0.213 47.604);
+    --primary-foreground: oklch(0.145 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 10%);
+    --ring: oklch(0.705 0.213 47.604);
+    --destructive: oklch(0.58 0.22 27);
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border, 214.3 31.8% 91.4%));
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ----------------------------------------------------------
+   OpenCRM design system shell variables
+   Per UI-REFERENCE.md §1 .ocm-shell
+   ---------------------------------------------------------- */
+.ocm-shell {
+  --ocm-bg: var(--background);
+  --ocm-surface: color-mix(in oklab, var(--card) 92%, var(--background) 8%);
+  --ocm-surface-soft: color-mix(in oklab, var(--muted) 72%, var(--background) 28%);
+  --ocm-line: color-mix(in oklab, var(--border) 88%, transparent);
+  --ocm-text: var(--foreground);
+  --ocm-text-muted: var(--muted-foreground);
+  --ocm-accent: var(--primary);
+  --ocm-success: oklch(0.68 0.16 148);
+  --ocm-warning: oklch(0.76 0.16 78);
+  --ocm-danger: oklch(0.62 0.2 26);
+}
+
+/* ----------------------------------------------------------
+   ocm-* component utility classes
+   Per UI-REFERENCE.md §1 key component classes
+   ---------------------------------------------------------- */
+@layer components {
+  /* Page wrapper */
+  .ocm-page {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 14px;
+    overflow: auto;
+    padding: 18px;
+  }
+
+  /* Card surface */
+  .ocm-card {
+    border: 1px solid var(--ocm-line, var(--border));
+    background: var(--ocm-surface, var(--card));
+    border-radius: 12px;
+    box-shadow: 0 8px 24px -20px rgb(0 0 0 / 45%);
+  }
+
+  /* Button */
+  .ocm-btn {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--ocm-line, var(--border));
+    background: var(--ocm-surface-soft, var(--muted));
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ocm-btn:hover {
+    opacity: 0.85;
+  }
+
+  /* Tag / badge */
+  .ocm-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+
+  /* Table */
+  .ocm-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .ocm-table th {
+    font-size: 0.64rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted-foreground);
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ocm-table td {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+  }
+  .ocm-table tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+  .ocm-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  /* Grid helpers */
+  .ocm-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .ocm-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+  @media (max-width: 1024px) {
+    .ocm-grid-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .ocm-grid-2 {
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .ocm-grid-4 {
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+  }
+
+  /* Progress bar */
+  .ocm-progress-track {
+    height: 8px;
+    background: var(--muted);
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+  .ocm-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 9999px;
+    transition: width 0.3s ease;
+  }
+}
