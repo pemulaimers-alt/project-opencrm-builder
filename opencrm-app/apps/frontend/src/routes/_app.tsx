@@ -1,8 +1,7 @@
 // =============================================================
-// Authenticated App Layout (Phase 4)
+// Authenticated App Layout (Phase 4 — nav corrected)
 //
-// Per builder contract (frontend/blueprint.md _app.tsx,
-// UI-REFERENCE.md §4 App Layout + §5 Sidebar):
+// Per builder contract (frontend/NAVIGATION-SCOPE.md + UI-REFERENCE.md):
 //
 // Auth guard flow:
 //   1. Check scalechat_token in localStorage
@@ -13,11 +12,14 @@
 //
 // Layout: Sidebar (desktop) + TopBar + <Outlet /> + BottomNav (mobile)
 //
-// Sidebar nav groups per UI-REFERENCE.md §5:
+// Sidebar per NAVIGATION-SCOPE.md (exact order, exact labels, exact icons):
 //   Operasional: Dashboard, Inbox, Handover, Orders
-//   Data: Pelanggan (Customers), Products
-//   Outreach: Broadcast
-//   Otomasi: Workflow, AI Playground, Knowledge Base, Settings
+//   Data:        Pelanggan, Products
+//   Outreach:    Broadcast
+//   Otomasi:     Workflow, AI Agents, AI Playground, Knowledge Base, Settings
+//
+// Takedown (must NOT appear): Metrics, Analytics, Developers,
+//   Apps, Integration, Help, Pipeline
 // =============================================================
 
 import {
@@ -30,14 +32,15 @@ import {
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   LayoutDashboard,
-  MessageSquare,
+  MessagesSquare,
   Users,
-  GitPullRequest,
-  ShoppingBag,
+  Shuffle,
+  ShoppingCart,
   Package,
-  Radio,
-  Workflow,
+  Megaphone,
+  Network,
   Bot,
+  WandSparkles,
   BookOpen,
   Settings,
   LogOut,
@@ -181,36 +184,41 @@ function AppLayout() {
 
 // ── Sidebar ───────────────────────────────────────────────────
 
+// ── Nav items — single source of truth per NAVIGATION-SCOPE.md ──
+// Order and labels are contractually fixed. Do not reorder or add items.
+// Takedown list (must never appear): Metrics, Analytics, Developers,
+// Apps, Integration, Help, Pipeline.
 const NAV_GROUPS = [
   {
     label: "Operasional",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { label: "Inbox", href: "/chat", icon: MessageSquare },
-      { label: "Handover", href: "/handover", icon: GitPullRequest },
-      { label: "Orders", href: "/orders", icon: ShoppingBag },
+      { label: "Dashboard",  href: "/dashboard", icon: LayoutDashboard },
+      { label: "Inbox",      href: "/chat",      icon: MessagesSquare   },
+      { label: "Handover",   href: "/handover",  icon: Shuffle          },
+      { label: "Orders",     href: "/orders",    icon: ShoppingCart     },
     ],
   },
   {
     label: "Data",
     items: [
-      { label: "Pelanggan", href: "/customers", icon: Users },
-      { label: "Products", href: "/products", icon: Package },
+      { label: "Pelanggan", href: "/customers", icon: Users   },
+      { label: "Products",  href: "/products",  icon: Package },
     ],
   },
   {
     label: "Outreach",
     items: [
-      { label: "Broadcast", href: "/broadcast", icon: Radio },
+      { label: "Broadcast", href: "/broadcast", icon: Megaphone },
     ],
   },
   {
     label: "Otomasi",
     items: [
-      { label: "Workflow", href: "/flows", icon: Workflow },
-      { label: "AI Playground", href: "/ai", icon: Bot },
-      { label: "Knowledge Base", href: "/knowledge", icon: BookOpen },
-      { label: "Settings", href: "/settings", icon: Settings },
+      { label: "Workflow",      href: "/flows",     icon: Network       },
+      { label: "AI Agents",     href: "/ai-agents", icon: Bot           },
+      { label: "AI Playground", href: "/ai",        icon: WandSparkles  },
+      { label: "Knowledge Base",href: "/knowledge", icon: BookOpen      },
+      { label: "Settings",      href: "/settings",  icon: Settings      },
     ],
   },
 ];
@@ -259,10 +267,10 @@ function AppSidebar() {
             </p>
             <div className="space-y-0.5">
               {group.items.map((item) => {
+                // Per NAVIGATION-SCOPE.md: exact match OR prefix match for all items
                 const active =
                   location.pathname === item.href ||
-                  (item.href !== "/dashboard" &&
-                    location.pathname.startsWith(item.href + "/"));
+                  location.pathname.startsWith(item.href + "/");
                 return (
                   <Link
                     key={item.href}

@@ -1,12 +1,31 @@
 // =============================================================
 // Role-based path access guard (Phase 4)
 //
-// Per builder contract (frontend/blueprint.md role-access.ts):
+// Per NAVIGATION-SCOPE.md OPENCRM_ALLOWED_PATHS + blueprint.md role table:
 //   agent      → /dashboard, /chat, /channels/whatsapp
 //   supervisor → agent paths + /team, /orders, /products,
 //                /product-stock, /settings
 //   admin/owner → all paths (unrestricted)
+//
+// All paths in OPENCRM_ALLOWED_PATHS are accessible by admin/owner.
 // =============================================================
+
+// Minimum allowed paths from NAVIGATION-SCOPE.md OPENCRM_ALLOWED_PATHS
+export const OPENCRM_ALLOWED_PATHS = [
+  "/dashboard",
+  "/chat",
+  "/handover",
+  "/orders",
+  "/customers",
+  "/products",
+  "/broadcast",
+  "/flows",
+  "/ai-agents",
+  "/ai",
+  "/knowledge",
+  "/settings",
+  "/channels/whatsapp",
+] as const;
 
 const AGENT_PATHS = ["/dashboard", "/chat", "/channels/whatsapp"];
 
