@@ -6,7 +6,7 @@
 // =============================================================
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search, Plus, Building2, Phone, Mail, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listCustomers, createCustomer, type Customer } from "@/lib/api";
@@ -25,20 +25,32 @@ function CustomersPage() {
 
   // Create modal state
   const [showCreate, setShowCreate] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", company: "" });
   const [creating, setCreating] = useState(false);
 
   const PER_PAGE = 25;
 
+  // Debounce search: wait 350ms after last keystroke before fetching
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => setDebouncedSearch(value), 350);
+  }
+
   useEffect(() => {
     load();
-  }, [page, search]);
+  }, [page, debouncedSearch]);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const res = await listCustomers({ page, per_page: PER_PAGE, search: search || undefined });
+      const res = await listCustomers({ page, per_page: PER_PAGE, search: debouncedSearch || undefined });
       setCustomers(res.data);
       setTotal(res.total);
     } catch (e) {
@@ -52,6 +64,7 @@ function CustomersPage() {
     e.preventDefault();
     if (!form.name.trim()) return;
     setCreating(true);
+    setCreateError(null);
     try {
       await createCustomer({
         name: form.name.trim(),
@@ -63,10 +76,21 @@ function CustomersPage() {
       setShowCreate(false);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create customer");
+      setCreateError(e instanceof Error ? e.message : "Failed to create customer");
     } finally {
       setCreating(false);
     }
+  }
+
+  function openCreate() {
+    setForm({ name: "", email: "", phone: "", company: "" });
+    setCreateError(null);
+    setShowCreate(true);
+  }
+
+  function closeCreate() {
+    setCreateError(null);
+    setShowCreate(false);
   }
 
   const totalPages = Math.ceil(total / PER_PAGE);
@@ -82,7 +106,7 @@ function CustomersPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={openCreate}
           className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
         >
           <Plus size={14} />
@@ -97,7 +121,7 @@ function CustomersPage() {
           type="text"
           placeholder="Search by name, email, or company…"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full rounded-lg border border-border bg-background py-2 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
@@ -246,10 +270,15 @@ function CustomersPage() {
                   />
                 </div>
               ))}
+              {createError && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {createError}
+                </div>
+              )}
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreate(false)}
+                  onClick={closeCreate}
                   className="flex-1 rounded-lg border border-border py-2 text-sm hover:bg-muted transition-colors"
                 >
                   Cancel

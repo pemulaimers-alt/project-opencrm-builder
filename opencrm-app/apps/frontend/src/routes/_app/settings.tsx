@@ -15,14 +15,13 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { User, Users, Plus, Trash2 } from "lucide-react";
+import { Users, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   getMe, updateUserProfile,
   listTeams, createTeam, deleteTeam,
   type AuthUser, type Team,
 } from "@/lib/api";
-import { useAppContext } from "../_app";
 import { PlaceholderPage } from "./-placeholder";
 
 export const Route = createFileRoute("/_app/settings")({
@@ -81,7 +80,6 @@ function SettingsPage() {
 // ── Profile Tab ───────────────────────────────────────────────
 
 function ProfileTab() {
-  const { userId } = useAppContext();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -216,7 +214,9 @@ function TeamsTab() {
     if (!confirm("Delete this team?")) return;
     try {
       await deleteTeam(id);
-      setTeams((t) => t.filter((x) => x.id !== id));
+      // Reload from server instead of optimistic removal,
+      // so UI only updates if the delete actually succeeded.
+      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete team");
     }

@@ -5,11 +5,11 @@
 // Response: { data: { ...customer, contacts: [], deals: [] } }
 // =============================================================
 
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Building2, Globe, MapPin, Phone, Mail, User, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getCustomer, updateCustomer, type CustomerDetail, type DealSummary } from "@/lib/api";
+import { getCustomer, updateCustomer, type CustomerDetail } from "@/lib/api";
 
 export const Route = createFileRoute("/_app/customers/$customerId")({
   component: CustomerDetailPage,
@@ -26,13 +26,13 @@ const STAGE_COLORS: Record<string, string> = {
 
 function CustomerDetailPage() {
   const { customerId } = Route.useParams();
-  const navigate = useNavigate();
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => { load(); }, [customerId]);
 
@@ -60,6 +60,7 @@ function CustomerDetailPage() {
     e.preventDefault();
     if (!customer) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await updateCustomer(customerId, {
         name: form.name,
@@ -68,10 +69,12 @@ function CustomerDetailPage() {
         company: form.company || undefined,
         notes: form.notes || undefined,
       });
-      setCustomer((c) => c ? { ...c, ...res.data } : c);
+      // Merge only the scalar fields from the PUT response.
+      // PUT returns Customer (no contacts/deals) — preserve existing arrays.
+      setCustomer((c) => c ? { ...c, ...res.data, contacts: c.contacts, deals: c.deals } : c);
       setEditing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save");
+      setSaveError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -115,7 +118,7 @@ function CustomerDetailPage() {
           )}
         </div>
         <button
-          onClick={() => setEditing((v) => !v)}
+          onClick={() => { setEditing((v) => !v); setSaveError(null); }}
           className={cn(
             "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
             editing
@@ -127,8 +130,8 @@ function CustomerDetailPage() {
         </button>
       </div>
 
-      {/* Error */}
-      {error && (
+      {/* Load error (shown only for load failures, not inline edit errors) */}
+      {error && !customer && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
@@ -166,6 +169,11 @@ function CustomerDetailPage() {
                     )}
                   </div>
                 ))}
+                {saveError && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {saveError}
+                  </div>
+                )}
                 <button
                   type="submit"
                   disabled={saving || !form.name.trim()}
