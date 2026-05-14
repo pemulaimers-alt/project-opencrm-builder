@@ -1,0 +1,21 @@
+{
+  "name": "opencrm",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "dev:backend": "bun run --filter backend dev",
+    "dev:frontend": "bun run --filter frontend dev",
+    "build:backend": "bun run --filter backend build",
+    "build:frontend": "bun run --filter frontend build",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "bun run --filter backend typecheck && bun run --filter frontend typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0"
+  }
+}
