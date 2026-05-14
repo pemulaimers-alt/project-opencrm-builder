@@ -1,0 +1,200 @@
+// =============================================================
+// OpenCRM — Prisma Schema (Phase 2)
+//
+// Core CRM entities: users, teams, customers, contacts, deals,
+// activities. Designed for an MVP CRM with clean relationships
+// and room to extend in later phases without overengineering.
+//
+// Run order after changes:
+//   bun run db:push       — apply schema to database (dev)
+//   bun run db:generate   — regenerate Prisma client
+// =============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../src/generated/client"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================
+// TEAMS
+// A team groups users (e.g. "Sales", "Support", "Enterprise").
+// One team has many users. A user belongs to at most one team.
+// =============================================================
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+
+  @@map("teams")
+}
+
+// =============================================================
+// USERS
+// A user is any person who operates the CRM.
+// Auth credentials (password, sessions) are added in Phase 3.
+// =============================================================
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  phone     String?
+  // "agent" | "admin" | "owner"
+  role      String   @default("agent")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Optional team membership — null means unassigned
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  assignedDeals Deal[]     @relation("DealAssignee")
+  activities    Activity[] @relation("ActivityPerformer")
+
+  @@index([teamId])
+  @@map("users")
+}
+
+// =============================================================
+// CUSTOMERS
+// A customer is a company / account in the CRM.
+// One customer can have many contacts and many deals.
+// =============================================================
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  industry  String?
+  website   String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts   Contact[]
+  deals      Deal[]
+  activities Activity[] @relation("ActivityCustomer")
+
+  @@map("customers")
+}
+
+// =============================================================
+// CONTACTS
+// A contact is an individual person under a customer account.
+// Deleting a customer cascades to all its contacts.
+// =============================================================
+model Contact {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String?
+  email     String?
+  phone     String?
+  jobTitle  String?
+  // Marks the main point of contact for the customer
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Required — a contact always belongs to a customer
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  activities Activity[] @relation("ActivityContact")
+
+  @@index([customerId])
+  @@map("contacts")
+}
+
+// =============================================================
+// DEALS
+// A deal is a sales opportunity tied to a customer.
+// Stage progresses: lead -> qualified -> proposal -> negotiation
+//                   -> won | lost
+// Deleting a customer cascades to all its deals.
+// =============================================================
+model Deal {
+  id                String   @id @default(cuid())
+  title             String
+  // Fixed-point decimal for currency accuracy; null = not yet set
+  value             Decimal? @db.Decimal(12, 2)
+  currency          String   @default("USD")
+  // "lead" | "qualified" | "proposal" | "negotiation" | "won" | "lost"
+  stage             String   @default("lead")
+  // "low" | "medium" | "high"
+  priority          String   @default("medium")
+  expectedCloseDate DateTime?
+  // Populated when stage transitions to "won" or "lost"
+  closedAt          DateTime?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Required — a deal always belongs to a customer
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // Optional — the user who owns / is responsible for this deal
+  assigneeId String?
+  assignee   User?   @relation("DealAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  activities Activity[] @relation("ActivityDeal")
+
+  @@index([customerId])
+  @@index([assigneeId])
+  @@index([stage])
+  @@map("deals")
+}
+
+// =============================================================
+// ACTIVITIES
+// An activity is any logged action: call, email, meeting,
+// internal note, or follow-up task.
+//
+// All entity links (customer, contact, deal, performer) are
+// optional so an activity can stand alone or relate to any
+// combination of the other entities.
+// =============================================================
+model Activity {
+  id          String    @id @default(cuid())
+  // "call" | "email" | "meeting" | "note" | "task"
+  type        String
+  title       String
+  description String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Who performed or is responsible for this activity
+  performedById String?
+  performedBy   User?     @relation("ActivityPerformer", fields: [performedById], references: [id], onDelete: SetNull)
+
+  // Linked entities — all optional
+  customerId String?
+  customer   Customer? @relation("ActivityCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+
+  contactId String?
+  contact   Contact?  @relation("ActivityContact", fields: [contactId], references: [id], onDelete: SetNull)
+
+  dealId String?
+  deal   Deal?     @relation("ActivityDeal", fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([performedById])
+  @@index([customerId])
+  @@index([contactId])
+  @@index([dealId])
+  @@map("activities")
+}
