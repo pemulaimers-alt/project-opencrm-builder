@@ -8,9 +8,11 @@
 // =============================================================
 
 import { Elysia, t } from "elysia";
+import { requireAuth } from "../../plugins/require-auth";
 import { UserService } from "./service";
 
 export const userModule = new Elysia({ name: "module:user", prefix: "/user" })
+  .use(requireAuth)
 
   .get("/", async ({ appUuid }) => {
     const users = await UserService.list(appUuid);

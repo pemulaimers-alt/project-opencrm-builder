@@ -12,9 +12,11 @@
 // =============================================================
 
 import { Elysia, t } from "elysia";
+import { requireAuth } from "../../plugins/require-auth";
 import { TeamService } from "./service";
 
 export const teamModule = new Elysia({ name: "module:team", prefix: "/teams" })
+  .use(requireAuth)
 
   .get("/", async ({ appUuid }) => {
     const teams = await TeamService.list(appUuid);

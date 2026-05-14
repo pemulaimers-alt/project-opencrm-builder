@@ -3,9 +3,11 @@
 // =============================================================
 
 import { Elysia, t } from "elysia";
+import { requireAuth } from "../../plugins/require-auth";
 import { ContactService } from "./service";
 
 export const contactModule = new Elysia({ name: "module:contact", prefix: "/contacts" })
+  .use(requireAuth)
 
   .get("/", async ({ appUuid, query }) => {
     const contacts = await ContactService.list(appUuid, { q: query.q });

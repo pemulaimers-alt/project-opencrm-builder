@@ -10,9 +10,11 @@
 // =============================================================
 
 import { Elysia, t } from "elysia";
+import { requireAuth } from "../../plugins/require-auth";
 import { DealService } from "./service";
 
 export const dealModule = new Elysia({ name: "module:deal", prefix: "/crm" })
+  .use(requireAuth)
 
   .get("/pipelines", async ({ appUuid, query }) => {
     const deals = await DealService.list(appUuid, {

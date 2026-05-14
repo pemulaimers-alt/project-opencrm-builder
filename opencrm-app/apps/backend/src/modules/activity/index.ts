@@ -3,9 +3,11 @@
 // =============================================================
 
 import { Elysia, t } from "elysia";
+import { requireAuth } from "../../plugins/require-auth";
 import { ActivityService } from "./service";
 
 export const activityModule = new Elysia({ name: "module:activity", prefix: "/activities" })
+  .use(requireAuth)
 
   .get("/", async ({ appUuid, query }) => {
     const activities = await ActivityService.list(appUuid, {
